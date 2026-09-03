@@ -10,11 +10,15 @@
 #include <thread>
 #include <vector>
 
+#ifndef AOG_CAN_BRIDGE_PORT
+#define AOG_CAN_BRIDGE_PORT 19000
+#endif
+
 namespace
 {
 	constexpr std::uint32_t Magic = 0x43474F41;
 	constexpr int PacketSize = 30;
-	constexpr std::uint16_t BridgePort = 19000;
+	constexpr std::uint16_t BridgePort = AOG_CAN_BRIDGE_PORT;
 	constexpr std::uint16_t PcanUsbBus1 = 0x51;
 	constexpr std::uint32_t ErrorOk = 0;
 	constexpr std::uint32_t ErrorQueueEmpty = 0x20;
@@ -127,7 +131,7 @@ int main(int argc, char **argv)
 	if (stop)
 	{
 		broker.join();
-		std::cerr << "Port 19000 is already in use." << std::endl;
+		std::cerr << "Port " << BridgePort << " is already in use." << std::endl;
 		return 3;
 	}
 

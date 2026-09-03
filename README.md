@@ -82,7 +82,7 @@ this repository and must be obtained from PEAK-System under its own terms.
 
 ## Project status
 
-- Mock two-client proxy test: implemented.
+- Mock two-client proxy test: passing on Windows x64.
 - Physical PCAN communication: requires bench verification.
 - Simultaneous VT and Task Controller session: requires bench verification.
 - Packaging and installer: not implemented.

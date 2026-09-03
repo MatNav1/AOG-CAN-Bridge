@@ -10,6 +10,10 @@
 #include <mutex>
 #include <string>
 
+#ifndef AOG_CAN_BRIDGE_PORT
+#define AOG_CAN_BRIDGE_PORT 19000
+#endif
+
 namespace
 {
 	using TPCANHandle = std::uint16_t;
@@ -48,7 +52,7 @@ namespace
 	constexpr std::uint8_t FrameToClient = 3;
 	constexpr std::uint8_t Heartbeat = 4;
 	constexpr int PacketSize = 30;
-	constexpr std::uint16_t BridgePort = 19000;
+	constexpr std::uint16_t BridgePort = AOG_CAN_BRIDGE_PORT;
 
 	std::mutex stateMutex;
 	SOCKET bridgeSocket = INVALID_SOCKET;
