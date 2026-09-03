@@ -18,6 +18,7 @@ cmake_install.cmake
 
 # Compiled binaries and vendor libraries
 *.dll
+!Vendor/PCANBasic.dll
 *.exe
 *.lib
 *.obj

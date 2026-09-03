@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1-alpha - 2026-09-03
+
+- Added an installation script that validates a user-supplied official PEAK
+  library and deploys the broker and proxy files.
+- Added a restoration script for returning VT and Task Controller to direct
+  PCAN-Basic operation.
+- Added a detailed installation and file-layout guide.
+- Bundled the official x64 PCAN-Basic 4.7.1 library already distributed by the
+  upstream VT and Task Controller projects, with third-party notices.
+
 ## 0.1.0-alpha - 2026-09-03
 
 First experimental release.

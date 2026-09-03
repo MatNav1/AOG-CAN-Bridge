@@ -38,6 +38,10 @@ TaskController/
   PCANBasicDirect.dll    official PEAK DLL, used when broker is off
 ```
 
+See [INSTALL.md](INSTALL.md) for the automated installation and restoration
+commands. The small `PCANBasic.dll` included in the release is the bridge proxy,
+not the official PEAK library.
+
 When the broker is running before VT/TC start, the proxy connects to it. If the
 broker is not running, the proxy loads `PCANBasicDirect.dll`, allowing either VT
 or TC to operate alone with the physical adapter.
@@ -76,16 +80,17 @@ cmake --build build-proxy --config Release
 ./build-proxy/Release/PcanBasicBridgeClientTest.exe ./build-proxy/Release/PCANBasic.dll
 ```
 
-The official PEAK-System `PCANBasic.dll` is required only at runtime next to the
-broker (and as `PCANBasicDirect.dll` for direct fallback). It is not included in
-this repository and must be obtained from PEAK-System under its own terms.
+The official PEAK-System `PCANBasic.dll` is required at runtime next to the
+broker (and as `PCANBasicDirect.dll` for direct fallback). The repository and
+Windows release contain the same x64 PCAN-Basic 4.7.1 library currently bundled
+by the upstream VT and Task Controller projects. See `THIRD_PARTY_NOTICES.md`.
 
 ## Project status
 
 - Mock two-client proxy test: passing on Windows x64.
 - Physical PCAN communication: requires bench verification.
 - Simultaneous VT and Task Controller session: requires bench verification.
-- Packaging and installer: not implemented.
+- PowerShell installation and restoration scripts: implemented.
 
 ## License and trademarks
 
