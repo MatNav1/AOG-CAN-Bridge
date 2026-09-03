@@ -1,0 +1,18 @@
+cmake_minimum_required(VERSION 3.16)
+project(PcanBasicBridgeClient LANGUAGES CXX)
+
+add_library(PCANBasic SHARED
+  pcanbasic_bridge.cpp
+  pcanbasic_bridge.def)
+target_compile_features(PCANBasic PRIVATE cxx_std_17)
+target_compile_definitions(PCANBasic PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_link_libraries(PCANBasic PRIVATE ws2_32)
+set_target_properties(PCANBasic PROPERTIES
+  OUTPUT_NAME "PCANBasic"
+  PREFIX ""
+  WINDOWS_EXPORT_ALL_SYMBOLS OFF)
+
+add_executable(PcanBasicBridgeClientTest bridge_proxy_test.cpp)
+target_compile_features(PcanBasicBridgeClientTest PRIVATE cxx_std_17)
+target_compile_definitions(PcanBasicBridgeClientTest PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_link_libraries(PcanBasicBridgeClientTest PRIVATE ws2_32)

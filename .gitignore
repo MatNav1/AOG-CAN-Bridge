@@ -1,0 +1,34 @@
+# Visual Studio / .NET
+.vs/
+bin/
+obj/
+*.user
+*.suo
+
+# CMake
+build/
+build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.vcxproj
+*.vcxproj.filters
+*.sln
+
+# Compiled binaries and vendor libraries
+*.dll
+*.exe
+*.lib
+*.obj
+*.pdb
+
+# Test copies and logs
+*.test-a.dll
+*.test-b.dll
+*.log
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

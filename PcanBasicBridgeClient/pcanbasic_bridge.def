@@ -1,0 +1,19 @@
+LIBRARY PCANBasic
+EXPORTS
+    CAN_Initialize   @1
+    CAN_Uninitialize @2
+    CAN_Reset        @3
+    CAN_GetStatus    @4
+    CAN_Read         @5
+    CAN_Write        @6
+    CAN_FilterMessages @7
+    CAN_GetValue     @8
+    CAN_SetValue     @9
+    CAN_GetErrorText @10
+    CAN_InitializeFD @11
+    CAN_ReadFD       @12
+    CAN_WriteFD      @13
+    CAN_LookUpChannel @14
+    CAN_InitializeXL @15
+    CAN_ReadXL       @16
+    CAN_WriteXL      @17
