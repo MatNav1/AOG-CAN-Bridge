@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
@@ -15,7 +16,9 @@ namespace AogCanBridge
             {
                 if (!isFirstInstance)
                 {
-                    MessageBox.Show("AOG CAN Bridge jest już uruchomiony.", "AOG CAN Bridge",
+                    List<LanguageInfo> languages = Localization.DiscoverLanguages();
+                    Localization.SetLanguage(Localization.ResolveSavedLanguage(languages));
+                    MessageBox.Show(Localization.Get("AlreadyRunning"), "AOG CAN Bridge",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
