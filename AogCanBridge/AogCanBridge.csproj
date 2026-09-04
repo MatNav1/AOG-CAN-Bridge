@@ -8,4 +8,9 @@
     <AssemblyName>AogCanBridge</AssemblyName>
     <RootNamespace>AogCanBridge</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Languages\*.lang">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

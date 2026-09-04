@@ -14,6 +14,9 @@ namespace AogCanBridge
     {
         private const int BridgePort = 19000;
         private const int BusBitrate = 250000;
+        private readonly Label languageCaptionLabel = new Label();
+        private readonly ComboBox languageBox = new ComboBox();
+        private readonly Label pcanChannelLabel = new Label();
         private readonly ComboBox channelBox = new ComboBox();
         private readonly Button startButton = new Button();
         private readonly Label statusLabel = new Label();
@@ -21,6 +24,7 @@ namespace AogCanBridge
         private readonly Label countersLabel = new Label();
         private readonly Label busloadLabel = new Label();
         private readonly ProgressBar busloadBar = new ProgressBar();
+        private readonly Label hintLabel = new Label();
         private readonly Dictionary<string, ClientState> clients =
             new Dictionary<string, ClientState>();
         private readonly object sync = new object();
@@ -41,68 +45,69 @@ namespace AogCanBridge
         internal BridgeForm(bool autoStart = false, bool minimized = false)
         {
             Text = "AOG CAN Bridge";
-            ClientSize = new Size(420, 262);
+            ClientSize = new Size(420, 296);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
 
-            Controls.Add(new Label
-            {
-                Text = "PCAN Channel",
-                Location = new Point(20, 22),
-                AutoSize = true
-            });
+            languageCaptionLabel.Location = new Point(20, 22);
+            languageCaptionLabel.AutoSize = true;
+            Controls.Add(languageCaptionLabel);
+
+            languageBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            languageBox.Location = new Point(125, 18);
+            languageBox.Width = 130;
+            languageBox.SelectedIndexChanged += (_, __) => ChangeLanguage();
+            Controls.Add(languageBox);
+
+            pcanChannelLabel.Location = new Point(20, 56);
+            pcanChannelLabel.AutoSize = true;
+            Controls.Add(pcanChannelLabel);
 
             channelBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            channelBox.Location = new Point(125, 18);
+            channelBox.Location = new Point(125, 52);
             channelBox.Width = 130;
             for (int index = 1; index <= 8; index++)
                 channelBox.Items.Add("PCAN-USB " + index);
             channelBox.SelectedIndex = 0;
             Controls.Add(channelBox);
 
-            startButton.Text = "Start";
-            startButton.Location = new Point(275, 16);
+            startButton.Location = new Point(275, 50);
             startButton.Size = new Size(120, 30);
             startButton.Click += (_, __) => ToggleBridge();
             Controls.Add(startButton);
 
-            statusLabel.Text = "Stopped";
             statusLabel.ForeColor = Color.DarkRed;
             statusLabel.Font = new Font(Font, FontStyle.Bold);
-            statusLabel.Location = new Point(20, 70);
+            statusLabel.Location = new Point(20, 104);
             statusLabel.Size = new Size(375, 24);
             Controls.Add(statusLabel);
 
-            clientsLabel.Location = new Point(20, 108);
+            clientsLabel.Location = new Point(20, 142);
             clientsLabel.Size = new Size(375, 24);
-            clientsLabel.Text = "Clients: 0";
             Controls.Add(clientsLabel);
 
-            countersLabel.Location = new Point(20, 138);
+            countersLabel.Location = new Point(20, 172);
             countersLabel.Size = new Size(375, 24);
-            countersLabel.Text = "RX: 0    TX: 0";
             Controls.Add(countersLabel);
 
-            busloadLabel.Location = new Point(20, 166);
+            busloadLabel.Location = new Point(20, 200);
             busloadLabel.Size = new Size(375, 18);
-            busloadLabel.Text = "Bus load: 0%";
             Controls.Add(busloadLabel);
 
-            busloadBar.Location = new Point(20, 186);
+            busloadBar.Location = new Point(20, 220);
             busloadBar.Size = new Size(375, 16);
             busloadBar.Minimum = 0;
             busloadBar.Maximum = 100;
             Controls.Add(busloadBar);
 
-            Controls.Add(new Label
-            {
-                Text = "Start the bridge before VT and Task Controller.",
-                Location = new Point(20, 220),
-                Size = new Size(375, 22)
-            });
+            hintLabel.Location = new Point(20, 254);
+            hintLabel.Size = new Size(375, 22);
+            Controls.Add(hintLabel);
 
             FormClosing += (_, __) => StopBridge();
+
+            InitializeLanguages();
 
             if (autoStart)
             {
@@ -123,6 +128,37 @@ namespace AogCanBridge
             }
         }
 
+        private void InitializeLanguages()
+        {
+            List<LanguageInfo> languages = Localization.DiscoverLanguages();
+            LanguageInfo selected = Localization.ResolveSavedLanguage(languages);
+
+            languageBox.Items.Clear();
+            foreach (LanguageInfo language in languages) languageBox.Items.Add(language);
+            languageBox.SelectedItem = selected;
+        }
+
+        private void ChangeLanguage()
+        {
+            if (!(languageBox.SelectedItem is LanguageInfo language)) return;
+            Localization.SetLanguage(language);
+            AppSettings.SaveLanguage(language.Code);
+            ApplyLocalization();
+        }
+
+        private void ApplyLocalization()
+        {
+            bool running = worker != null && worker.IsAlive;
+            languageCaptionLabel.Text = Localization.Get("Language");
+            pcanChannelLabel.Text = Localization.Get("PcanChannel");
+            startButton.Text = running ? Localization.Get("Stop") : Localization.Get("Start");
+            statusLabel.Text = running
+                ? Localization.Get("StatusRunning", channelBox.SelectedItem)
+                : Localization.Get("StatusStopped");
+            hintLabel.Text = Localization.Get("Hint");
+            UpdateStatistics();
+        }
+
         private void ToggleBridge()
         {
             if (worker != null && worker.IsAlive) StopBridge();
@@ -139,14 +175,14 @@ namespace AogCanBridge
             }
             catch (DllNotFoundException)
             {
-                MessageBox.Show(this, "PCANBasic.dll not found next to AogCanBridge.exe.",
+                MessageBox.Show(this, Localization.Get("ErrorDllMissing"),
                     "AOG CAN Bridge", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             if (result != PcanBasic.ErrorOk)
             {
-                MessageBox.Show(this, GetPcanError(result), "Cannot open PCAN",
+                MessageBox.Show(this, GetPcanError(result), Localization.Get("ErrorCannotOpenPcanTitle"),
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
@@ -166,9 +202,8 @@ namespace AogCanBridge
             catch (Exception exception)
             {
                 PcanBasic.Uninitialize(pcanChannel);
-                MessageBox.Show(this, "Cannot open local port " + BridgePort +
-                    ":\r\n" + exception.Message, "AOG CAN Bridge",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, Localization.Get("ErrorCannotOpenPort", BridgePort, exception.Message),
+                    "AOG CAN Bridge", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -184,8 +219,8 @@ namespace AogCanBridge
             worker.Start();
             transmitWorker.Start();
             channelBox.Enabled = false;
-            startButton.Text = "Stop";
-            statusLabel.Text = "Running — " + channelBox.SelectedItem;
+            startButton.Text = Localization.Get("Stop");
+            statusLabel.Text = Localization.Get("StatusRunning", channelBox.SelectedItem);
             statusLabel.ForeColor = Color.DarkGreen;
         }
 
@@ -212,11 +247,11 @@ namespace AogCanBridge
             if (!IsDisposed)
             {
                 channelBox.Enabled = true;
-                startButton.Text = "Start";
-                statusLabel.Text = "Stopped";
+                startButton.Text = Localization.Get("Start");
+                statusLabel.Text = Localization.Get("StatusStopped");
                 statusLabel.ForeColor = Color.DarkRed;
                 busloadBar.Value = 0;
-                busloadLabel.Text = "Bus load: 0%";
+                busloadLabel.Text = Localization.Get("BusLoad", "0");
                 UpdateStatistics();
             }
         }
@@ -398,11 +433,12 @@ namespace AogCanBridge
                     hasTc |= client.ClientId == 3;
                 }
             }
-            clientsLabel.Text = "Clients: " + clientCount +
-                "    VT (2): " + (hasVt ? "connected" : "none") +
-                "    TC (3): " + (hasTc ? "connected" : "none");
-            countersLabel.Text = "RX: " + Interlocked.Read(ref receivedFrames) +
-                "    TX: " + Interlocked.Read(ref transmittedFrames);
+            string connected = Localization.Get("Connected");
+            string notConnected = Localization.Get("NotConnected");
+            clientsLabel.Text = Localization.Get("Clients", clientCount,
+                hasVt ? connected : notConnected, hasTc ? connected : notConnected);
+            countersLabel.Text = Localization.Get("Counters",
+                Interlocked.Read(ref receivedFrames), Interlocked.Read(ref transmittedFrames));
 
             long currentBusBits = Interlocked.Read(ref busBits);
             DateTime now = DateTime.UtcNow;
@@ -417,7 +453,7 @@ namespace AogCanBridge
             lastBusBits = currentBusBits;
             lastBusloadSampleTime = now;
             busloadBar.Value = (int)Math.Round(percent);
-            busloadLabel.Text = "Bus load: " + percent.ToString("0.#") + "%";
+            busloadLabel.Text = Localization.Get("BusLoad", percent.ToString("0.#"));
         }
 
         private static int EstimateFrameBits(byte dataLength, bool extended)
@@ -431,7 +467,7 @@ namespace AogCanBridge
         {
             StringBuilder text = new StringBuilder(256);
             return PcanBasic.GetErrorText(error, 0, text) == PcanBasic.ErrorOk
-                ? text.ToString() : "PCAN error 0x" + error.ToString("X");
+                ? text.ToString() : Localization.Get("ErrorPcan", error.ToString("X"));
         }
 
         private sealed class ClientState
