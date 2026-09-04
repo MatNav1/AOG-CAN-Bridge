@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+- Translated the GUI to English with a language picker; UI text now loads
+  from external `Languages\*.lang` files (English and Polish shipped) so a
+  translation can be added without a rebuild.
+- Added a CAN bus load indicator and simplified the frame counters to
+  `RX:`/`TX:`.
+- Added live VT / Task Controller patch-status reporting (not found /
+  unpatched / patched / connected) based on the standard install paths.
+- Added an application icon.
+- Added a Windows installer (Inno Setup) that installs the broker and can
+  patch AgISOVirtualTerminal / AOG-TaskController in place; re-running it
+  re-patches either app after an update, and uninstalling restores the
+  original `PCANBasic.dll`.
+- Added a GitHub Actions workflow that builds the broker, the bridge proxy,
+  and the installer, and publishes it as a GitHub Release on a version tag.
+- `Install-Bridge.ps1` and `Restore-DirectPcan.ps1` now default to the
+  standard VT/TC install paths and skip (rather than abort on) a missing
+  target, so both can be run with no arguments.
+
 ## 0.1.1-alpha - 2026-09-03
 
 - Added an installation script that validates a user-supplied official PEAK
