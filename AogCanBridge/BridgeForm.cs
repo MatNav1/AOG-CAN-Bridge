@@ -13,11 +13,14 @@ namespace AogCanBridge
     internal sealed class BridgeForm : Form
     {
         private const int BridgePort = 19000;
+        private const int BusBitrate = 250000;
         private readonly ComboBox channelBox = new ComboBox();
         private readonly Button startButton = new Button();
         private readonly Label statusLabel = new Label();
         private readonly Label clientsLabel = new Label();
         private readonly Label countersLabel = new Label();
+        private readonly Label busloadLabel = new Label();
+        private readonly ProgressBar busloadBar = new ProgressBar();
         private readonly Dictionary<string, ClientState> clients =
             new Dictionary<string, ClientState>();
         private readonly object sync = new object();
@@ -31,18 +34,21 @@ namespace AogCanBridge
         private ushort pcanChannel;
         private long receivedFrames;
         private long transmittedFrames;
+        private long busBits;
+        private long lastBusBits;
+        private DateTime lastBusloadSampleTime;
 
         internal BridgeForm(bool autoStart = false, bool minimized = false)
         {
             Text = "AOG CAN Bridge";
-            ClientSize = new Size(420, 225);
+            ClientSize = new Size(420, 262);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
 
             Controls.Add(new Label
             {
-                Text = "Kanał PCAN",
+                Text = "PCAN Channel",
                 Location = new Point(20, 22),
                 AutoSize = true
             });
@@ -55,13 +61,13 @@ namespace AogCanBridge
             channelBox.SelectedIndex = 0;
             Controls.Add(channelBox);
 
-            startButton.Text = "Uruchom";
+            startButton.Text = "Start";
             startButton.Location = new Point(275, 16);
             startButton.Size = new Size(120, 30);
             startButton.Click += (_, __) => ToggleBridge();
             Controls.Add(startButton);
 
-            statusLabel.Text = "Zatrzymany";
+            statusLabel.Text = "Stopped";
             statusLabel.ForeColor = Color.DarkRed;
             statusLabel.Font = new Font(Font, FontStyle.Bold);
             statusLabel.Location = new Point(20, 70);
@@ -70,18 +76,29 @@ namespace AogCanBridge
 
             clientsLabel.Location = new Point(20, 108);
             clientsLabel.Size = new Size(375, 24);
-            clientsLabel.Text = "Klienci: 0";
+            clientsLabel.Text = "Clients: 0";
             Controls.Add(clientsLabel);
 
             countersLabel.Location = new Point(20, 138);
-            countersLabel.Size = new Size(375, 40);
-            countersLabel.Text = "CAN odebrane: 0    CAN wysłane: 0";
+            countersLabel.Size = new Size(375, 24);
+            countersLabel.Text = "RX: 0    TX: 0";
             Controls.Add(countersLabel);
+
+            busloadLabel.Location = new Point(20, 166);
+            busloadLabel.Size = new Size(375, 18);
+            busloadLabel.Text = "Bus load: 0%";
+            Controls.Add(busloadLabel);
+
+            busloadBar.Location = new Point(20, 186);
+            busloadBar.Size = new Size(375, 16);
+            busloadBar.Minimum = 0;
+            busloadBar.Maximum = 100;
+            Controls.Add(busloadBar);
 
             Controls.Add(new Label
             {
-                Text = "Uruchom most przed VT i Task Controllerem.",
-                Location = new Point(20, 185),
+                Text = "Start the bridge before VT and Task Controller.",
+                Location = new Point(20, 220),
                 Size = new Size(375, 22)
             });
 
@@ -122,14 +139,14 @@ namespace AogCanBridge
             }
             catch (DllNotFoundException)
             {
-                MessageBox.Show(this, "Brak PCANBasic.dll obok AogCanBridge.exe.",
+                MessageBox.Show(this, "PCANBasic.dll not found next to AogCanBridge.exe.",
                     "AOG CAN Bridge", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             if (result != PcanBasic.ErrorOk)
             {
-                MessageBox.Show(this, GetPcanError(result), "Nie można otworzyć PCAN",
+                MessageBox.Show(this, GetPcanError(result), "Cannot open PCAN",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
@@ -149,7 +166,7 @@ namespace AogCanBridge
             catch (Exception exception)
             {
                 PcanBasic.Uninitialize(pcanChannel);
-                MessageBox.Show(this, "Nie można otworzyć portu lokalnego " + BridgePort +
+                MessageBox.Show(this, "Cannot open local port " + BridgePort +
                     ":\r\n" + exception.Message, "AOG CAN Bridge",
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -158,14 +175,17 @@ namespace AogCanBridge
             lock (sync) clients.Clear();
             receivedFrames = 0;
             transmittedFrames = 0;
+            busBits = 0;
+            lastBusBits = 0;
+            lastBusloadSampleTime = DateTime.UtcNow;
             stopRequested = false;
             worker = new Thread(BridgeLoop) { IsBackground = true, Name = "AOG CAN Bridge" };
             transmitWorker = new Thread(TransmitLoop) { IsBackground = true, Name = "AOG CAN Bridge TX" };
             worker.Start();
             transmitWorker.Start();
             channelBox.Enabled = false;
-            startButton.Text = "Zatrzymaj";
-            statusLabel.Text = "Uruchomiony — " + channelBox.SelectedItem;
+            startButton.Text = "Stop";
+            statusLabel.Text = "Running — " + channelBox.SelectedItem;
             statusLabel.ForeColor = Color.DarkGreen;
         }
 
@@ -174,7 +194,8 @@ namespace AogCanBridge
             stopRequested = true;
             transmitQueueEvent.Set();
             if (worker != null && worker.IsAlive) worker.Join(1500);
-            if (transmitWorker != null && transmitWorker.IsAlive) transmitWorker.Join(1500);
+            bool transmitDrained = transmitWorker == null || !transmitWorker.IsAlive ||
+                transmitWorker.Join(1500);
             worker = null;
             transmitWorker = null;
             if (udp != null)
@@ -182,15 +203,20 @@ namespace AogCanBridge
                 udp.Close();
                 udp = null;
             }
-            if (pcanChannel != 0) PcanBasic.Uninitialize(pcanChannel);
+            // If the transmit thread is still draining a backlog, PcanBasic.Write
+            // may still be in flight on pcanChannel — uninitializing it concurrently
+            // could crash the driver, so skip it and leak the handle instead.
+            if (pcanChannel != 0 && transmitDrained) PcanBasic.Uninitialize(pcanChannel);
             pcanChannel = 0;
             lock (sync) clients.Clear();
             if (!IsDisposed)
             {
                 channelBox.Enabled = true;
-                startButton.Text = "Uruchom";
-                statusLabel.Text = "Zatrzymany";
+                startButton.Text = "Start";
+                statusLabel.Text = "Stopped";
                 statusLabel.ForeColor = Color.DarkRed;
+                busloadBar.Value = 0;
+                busloadLabel.Text = "Bus load: 0%";
                 UpdateStatistics();
             }
         }
@@ -288,7 +314,11 @@ namespace AogCanBridge
                 if (transmitQueue.TryDequeue(out PcanBasic.CanMessage message))
                 {
                     if (PcanBasic.Write(pcanChannel, ref message) == PcanBasic.ErrorOk)
+                    {
                         Interlocked.Increment(ref transmittedFrames);
+                        Interlocked.Add(ref busBits, EstimateFrameBits(message.Length,
+                            (message.MessageType & PcanBasic.MessageExtended) != 0));
+                    }
                 }
                 else
                 {
@@ -320,6 +350,8 @@ namespace AogCanBridge
                 };
                 Buffer.BlockCopy(message.Data, 0, packet.Data, 0, 8);
                 Interlocked.Increment(ref receivedFrames);
+                Interlocked.Add(ref busBits, EstimateFrameBits(message.Length,
+                    (message.MessageType & PcanBasic.MessageExtended) != 0));
                 Broadcast(packet, null);
             }
         }
@@ -366,18 +398,40 @@ namespace AogCanBridge
                     hasTc |= client.ClientId == 3;
                 }
             }
-            clientsLabel.Text = "Klienci: " + clientCount +
-                "    VT (2): " + (hasVt ? "połączony" : "brak") +
-                "    TC (3): " + (hasTc ? "połączony" : "brak");
-            countersLabel.Text = "CAN odebrane: " + Interlocked.Read(ref receivedFrames) +
-                "    CAN wysłane: " + Interlocked.Read(ref transmittedFrames);
+            clientsLabel.Text = "Clients: " + clientCount +
+                "    VT (2): " + (hasVt ? "connected" : "none") +
+                "    TC (3): " + (hasTc ? "connected" : "none");
+            countersLabel.Text = "RX: " + Interlocked.Read(ref receivedFrames) +
+                "    TX: " + Interlocked.Read(ref transmittedFrames);
+
+            long currentBusBits = Interlocked.Read(ref busBits);
+            DateTime now = DateTime.UtcNow;
+            double elapsedSeconds = (now - lastBusloadSampleTime).TotalSeconds;
+            double percent = 0;
+            if (elapsedSeconds > 0)
+            {
+                long deltaBits = currentBusBits - lastBusBits;
+                percent = Math.Max(0, Math.Min(100,
+                    deltaBits / (elapsedSeconds * BusBitrate) * 100.0));
+            }
+            lastBusBits = currentBusBits;
+            lastBusloadSampleTime = now;
+            busloadBar.Value = (int)Math.Round(percent);
+            busloadLabel.Text = "Bus load: " + percent.ToString("0.#") + "%";
+        }
+
+        private static int EstimateFrameBits(byte dataLength, bool extended)
+        {
+            // Nominal bit count (SOF, arbitration, control, CRC, ACK, EOF, IFS)
+            // without bit stuffing; a close-enough estimate for a load indicator.
+            return (extended ? 67 : 47) + 8 * dataLength;
         }
 
         private static string GetPcanError(uint error)
         {
             StringBuilder text = new StringBuilder(256);
             return PcanBasic.GetErrorText(error, 0, text) == PcanBasic.ErrorOk
-                ? text.ToString() : "Błąd PCAN 0x" + error.ToString("X");
+                ? text.ToString() : "PCAN error 0x" + error.ToString("X");
         }
 
         private sealed class ClientState

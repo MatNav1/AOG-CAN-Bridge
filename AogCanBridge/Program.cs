@@ -15,7 +15,7 @@ namespace AogCanBridge
             {
                 if (!isFirstInstance)
                 {
-                    MessageBox.Show("AOG CAN Bridge jest już uruchomiony.", "AOG CAN Bridge",
+                    MessageBox.Show("AOG CAN Bridge is already running.", "AOG CAN Bridge",
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
