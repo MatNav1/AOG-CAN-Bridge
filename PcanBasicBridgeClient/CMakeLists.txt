@@ -5,7 +5,8 @@ set(AOG_CAN_BRIDGE_PORT 19000 CACHE STRING "UDP loopback port used by the bridge
 
 add_library(PCANBasic SHARED
   pcanbasic_bridge.cpp
-  pcanbasic_bridge.def)
+  pcanbasic_bridge.def
+  version.rc)
 target_compile_features(PCANBasic PRIVATE cxx_std_17)
 target_compile_definitions(PCANBasic PRIVATE
   WIN32_LEAN_AND_MEAN
