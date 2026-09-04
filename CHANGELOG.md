@@ -1,5 +1,56 @@
 # Changelog
 
+## Unreleased
+
+- Translated the GUI to English with a language picker; UI text now loads
+  from external `Languages\*.lang` files (English and Polish shipped) so a
+  translation can be added without a rebuild.
+- Added a CAN bus load indicator and simplified the frame counters to
+  `RX:`/`TX:`.
+- Added live VT / Task Controller patch-status reporting (not found /
+  unpatched / patched / connected) based on the standard install paths.
+- Added an application icon.
+- Added a Windows installer (Inno Setup) that installs the broker and can
+  patch AgISOVirtualTerminal / AOG-TaskController in place; re-running it
+  re-patches either app after an update, and uninstalling restores the
+  original `PCANBasic.dll`.
+- Added a GitHub Actions workflow that builds the broker, the bridge proxy,
+  and the installer, and publishes it as a GitHub Release on a version tag.
+- `Install-Bridge.ps1` and `Restore-DirectPcan.ps1` now default to the
+  standard VT/TC install paths and skip (rather than abort on) a missing
+  target, so both can be run with no arguments.
+- Patching now swaps `PCANBasic.dll` by renaming rather than overwriting in
+  place (the preserved original is `zPCANBasic.dll`, replacing
+  `PCANBasicDirect.dll`), so VT/Task Controller no longer need to be closed
+  before patching or restoring — verified against a DLL held open by a
+  separate process. They still need restarting afterward to load the change.
+- Fixed a false "patched" reading: status was previously inferred from
+  whether `zPCANBasic.dll` existed, which goes stale if VT/Task Controller is
+  reinstalled or updated (its installer restores its own original
+  `PCANBasic.dll` but has no idea our backup file is sitting there). The
+  bridge proxy DLL now carries an identifiable version marker, and status is
+  read from the active `PCANBasic.dll`'s actual identity instead — verified
+  by reproducing the stale-backup scenario directly.
+- Fixed the actual cause of patching silently failing when run by the
+  installer: `Install-Bridge.ps1` had `[CmdletBinding()]`, and with it
+  `$PSScriptRoot` is not yet set while the `param()` block's own
+  default-value expressions are evaluated, so `Join-Path $PSScriptRoot ...`
+  threw immediately - before `Start-Transcript` had even run, which is why
+  no log appeared either. This only ever showed up when the script was
+  invoked with none of its arguments given explicitly (exactly how the
+  installer calls it); every manual test before this always passed
+  arguments, which masked it. Reproduced directly, then confirmed fixed by
+  removing `[CmdletBinding()]` (unused here) and re-running both the
+  failing and the happy-path case.
+- `Install-Bridge.ps1` and `Restore-DirectPcan.ps1` now write a full
+  transcript log (`Install-Bridge.log` / `Restore-DirectPcan.log`, next to
+  the script) on every run.
+- The installer's patch/restore step is no longer silent: it runs visibly
+  and then shows the resulting log (and exit code) in a message box, so a
+  failed or skipped patch is impossible to miss.
+- The installer can optionally add a Startup-folder shortcut to launch the
+  broker automatically (minimized) on Windows sign-in.
+
 ## 0.1.1-alpha - 2026-09-03
 
 - Added an installation script that validates a user-supplied official PEAK

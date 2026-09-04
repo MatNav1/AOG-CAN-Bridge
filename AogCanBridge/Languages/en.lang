@@ -1,0 +1,21 @@
+# AOG CAN Bridge - English
+LanguageName=English
+Language=Language
+PcanChannel=PCAN Channel
+Start=Start
+Stop=Stop
+StatusStopped=Stopped
+StatusRunning=Running — {0}
+Clients=Clients: {0}    VT (2): {1}    TC (3): {2}
+PatchNotFound=not found
+PatchUnpatched=unpatched
+PatchPatched=patched
+PatchPatchedConnected=patched, connected
+Counters=RX: {0}    TX: {1}
+BusLoad=Bus load: {0}%
+Hint=Start the bridge before VT and Task Controller.
+ErrorDllMissing=PCANBasic.dll not found next to AogCanBridge.exe.
+ErrorCannotOpenPcanTitle=Cannot open PCAN
+ErrorCannotOpenPort=Cannot open local port {0}:\r\n{1}
+ErrorPcan=PCAN error 0x{0}
+AlreadyRunning=AOG CAN Bridge is already running.
