@@ -21,3 +21,29 @@ jobs:
       - name: Build AOG CAN Bridge
         shell: pwsh
         run: dotnet build AogCanBridge/AogCanBridge.csproj -c Release
+
+      - name: Configure bridge proxy (CMake)
+        shell: pwsh
+        run: cmake -S PcanBasicBridgeClient -B PcanBasicBridgeClient/build -A x64
+
+      - name: Build bridge proxy
+        shell: pwsh
+        run: cmake --build PcanBasicBridgeClient/build --config Release
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = Get-ChildItem 'C:\Program Files*\Inno Setup 6\ISCC.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $iscc) { throw 'ISCC.exe not found after installing Inno Setup.' }
+          & $iscc.FullName installer\Setup.iss "/DMyAppVersion=0.0.0-ci.$($env:GITHUB_RUN_NUMBER)"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AogCanBridge-Setup
+          path: installer/Output/*.exe
+          if-no-files-found: error
