@@ -7,6 +7,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>AogCanBridge</AssemblyName>
     <RootNamespace>AogCanBridge</RootNamespace>
+    <ApplicationIcon>favicon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Languages\*.lang">

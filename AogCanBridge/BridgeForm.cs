@@ -49,6 +49,8 @@ namespace AogCanBridge
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); }
+            catch (ArgumentException) { }
 
             languageCaptionLabel.Location = new Point(20, 22);
             languageCaptionLabel.AutoSize = true;
@@ -433,10 +435,9 @@ namespace AogCanBridge
                     hasTc |= client.ClientId == 3;
                 }
             }
-            string connected = Localization.Get("Connected");
-            string notConnected = Localization.Get("NotConnected");
             clientsLabel.Text = Localization.Get("Clients", clientCount,
-                hasVt ? connected : notConnected, hasTc ? connected : notConnected);
+                DescribePatchStatus(ClientPatchStatus.VirtualTerminalDirectory, hasVt),
+                DescribePatchStatus(ClientPatchStatus.TaskControllerDirectory, hasTc));
             countersLabel.Text = Localization.Get("Counters",
                 Interlocked.Read(ref receivedFrames), Interlocked.Read(ref transmittedFrames));
 
@@ -454,6 +455,18 @@ namespace AogCanBridge
             lastBusloadSampleTime = now;
             busloadBar.Value = (int)Math.Round(percent);
             busloadLabel.Text = Localization.Get("BusLoad", percent.ToString("0.#"));
+        }
+
+        private static string DescribePatchStatus(string clientDirectory, bool connected)
+        {
+            switch (ClientPatchStatus.Detect(clientDirectory))
+            {
+                case PatchState.NotFound: return Localization.Get("PatchNotFound");
+                case PatchState.Unpatched: return Localization.Get("PatchUnpatched");
+                default: return connected
+                    ? Localization.Get("PatchPatchedConnected")
+                    : Localization.Get("PatchPatched");
+            }
         }
 
         private static int EstimateFrameBits(byte dataLength, bool extended)
