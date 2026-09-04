@@ -35,6 +35,7 @@ Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
 [Tasks]
 Name: "patchclients"; Description: "Patch AgOpenGPS Virtual Terminal / Task Controller now (they must already be installed; safe to re-run after updating either one)"; GroupDescription: "CAN bridge integration:"
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
+Name: "autostart"; Description: "Start AOG CAN Bridge automatically (minimized) when Windows starts"; GroupDescription: "Startup:"; Flags: unchecked
 
 [Files]
 Source: "..\AogCanBridge\bin\Release\AogCanBridge.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -49,6 +50,7 @@ Source: "..\Restore-DirectPcan.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\AOG CAN Bridge"; Filename: "{app}\AogCanBridge.exe"
 Name: "{group}\Uninstall AOG CAN Bridge"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\AOG CAN Bridge"; Filename: "{app}\AogCanBridge.exe"; Tasks: desktopicon
+Name: "{commonstartup}\AOG CAN Bridge"; Filename: "{app}\AogCanBridge.exe"; Parameters: "--autostart --minimized"; Tasks: autostart
 
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Install-Bridge.ps1"""; StatusMsg: "Patching Virtual Terminal and Task Controller..."; Tasks: patchclients; Flags: runhidden waituntilterminated

@@ -58,12 +58,19 @@ The installer:
 1. verifies that the selected library identifies itself as PEAK-System
    `PCANBasic.dll`;
 2. copies the official DLL next to `Broker\AogCanBridge.exe`;
-3. preserves the direct library as `PCANBasicDirect.dll` next to VT and Task
-   Controller;
+3. preserves the direct library by renaming it to `zPCANBasic.dll` next to VT
+   and Task Controller;
 4. installs the small bridge proxy as `PCANBasic.dll` next to both applications.
 
 The installer does not modify the application executables or the Windows
-driver. Close VT and Task Controller before running it.
+driver. VT and Task Controller do **not** need to be closed first — the swap
+is done by renaming files rather than overwriting them in place, which
+Windows allows even while a DLL is loaded. Restart either application
+afterward so it picks up the change.
+
+Every run (manual or via the Windows installer's "patch now" task) writes a
+full log to `Install-Bridge.log` next to the script — inside `{app}` when run
+by the installer. Check it if a target you expected to be patched wasn't.
 
 ## Starting the applications
 
@@ -76,23 +83,27 @@ All applications must use Classic CAN at 250 kbit/s.
 
 The broker window shows each client's status as "not found", "unpatched",
 "patched", or "patched, connected" — a quick way to tell whether VT or Task
-Controller still needs patching (for example after an update overwrote its
-`PCANBasic.dll`).
+Controller still needs patching. This checks the identity of the active
+`PCANBasic.dll` itself (not just whether a `zPCANBasic.dll` backup exists),
+so it correctly reads "unpatched" again if VT or Task Controller was
+reinstalled or updated and silently restored its own original library.
 
 ## Restore direct PCAN operation
-
-Close VT and Task Controller, then run:
 
 ```powershell
 .\Restore-DirectPcan.ps1
 ```
 
-This defaults to the standard VT/TC install locations and skips whichever
-one isn't found or wasn't patched. To target non-standard locations, pass
-`-VirtualTerminalDirectory` and/or `-TaskControllerDirectory` as above.
+VT and Task Controller do not need to be closed first, for the same reason as
+above. This defaults to the standard VT/TC install locations and skips
+whichever one isn't found or wasn't patched. To target non-standard
+locations, pass `-VirtualTerminalDirectory` and/or `-TaskControllerDirectory`
+as above.
 
-This copies each preserved `PCANBasicDirect.dll` back to `PCANBasic.dll`. The
-backup is intentionally retained so bridge mode can be installed again later.
+This renames each preserved `zPCANBasic.dll` back to `PCANBasic.dll`. Patching
+again later re-creates the backup from scratch.
+
+This also logs to `Restore-DirectPcan.log` next to the script.
 
 ## Manual layout
 
@@ -101,13 +112,13 @@ After installation, the relevant files should look like this:
 ```text
 Broker/
   AogCanBridge.exe
-  PCANBasic.dll          official PEAK library
+  PCANBasic.dll   official PEAK library
 VT/
   AgISOVirtualTerminal.exe
-  PCANBasic.dll          AOG CAN Bridge proxy (small file)
-  PCANBasicDirect.dll    official PEAK library
+  PCANBasic.dll   AOG CAN Bridge proxy (small file)
+  zPCANBasic.dll  official PEAK library (renamed aside)
 TaskController/
   AOG-TaskController.exe
-  PCANBasic.dll          AOG CAN Bridge proxy (small file)
-  PCANBasicDirect.dll    official PEAK library
+  PCANBasic.dll   AOG CAN Bridge proxy (small file)
+  zPCANBasic.dll  official PEAK library (renamed aside)
 ```

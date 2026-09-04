@@ -9,6 +9,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# The installer runs this step non-interactively, so a transcript is the
+# only record of what it actually did to VT/TC's files.
+$logPath = Join-Path $PSScriptRoot 'Install-Bridge.log'
+try { Start-Transcript -Path $logPath -Force -ErrorAction Stop | Out-Null } catch { }
+
+try {
+
 # When this script is deployed next to the broker exe (the installer layout),
 # install there instead of a Broker subfolder used by the old manual layout.
 if (-not $BrokerDirectory) {
@@ -36,6 +43,20 @@ function Assert-PeakLibrary([string]$Path) {
     Write-Host "Official PCAN-Basic: $($version.FileVersion) ($($version.CompanyName))"
 }
 
+function Set-AsideLockedFile([string]$Path) {
+    # A DLL currently loaded by a running process can still be renamed on
+    # NTFS, but NOT deleted or overwritten in place (verified: Remove-Item
+    # on a loaded DLL fails with access denied, while Move-Item to a fresh
+    # name succeeds). So clearing $Path always renames it out of the way;
+    # the discarded copy is then deleted best-effort, tolerating failure if
+    # it's still locked - it's just disk clutter at that point, not state
+    # anything depends on.
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
+    $discardPath = "$Path.old-$([guid]::NewGuid().ToString('N')).tmp"
+    Move-Item -LiteralPath $Path -Destination $discardPath -Force
+    Remove-Item -LiteralPath $discardPath -Force -ErrorAction SilentlyContinue
+}
+
 function Install-ClientProxy(
     [string]$ApplicationDirectory,
     [string]$ApplicationExe,
@@ -56,24 +77,35 @@ function Install-ClientProxy(
     }
 
     $activeDll = Join-Path $ApplicationDirectory 'PCANBasic.dll'
-    $directDll = Join-Path $ApplicationDirectory 'PCANBasicDirect.dll'
+    $originalDll = Join-Path $ApplicationDirectory 'zPCANBasic.dll'
 
-    if (-not (Test-Path -LiteralPath $directDll -PathType Leaf)) {
+    # This never overwrites or deletes $activeDll directly (see
+    # Set-AsideLockedFile): it always clears the name by renaming, then
+    # copies a fresh file in. That makes it safe to run whether or not
+    # VT/TC are currently running; either just needs restarting afterward
+    # to pick up the change.
+    if (-not (Test-Path -LiteralPath $originalDll -PathType Leaf)) {
         if (Test-Path -LiteralPath $activeDll -PathType Leaf) {
             try {
                 Assert-PeakLibrary $activeDll
-                Copy-Item -LiteralPath $activeDll -Destination $directDll
+                Move-Item -LiteralPath $activeDll -Destination $originalDll -Force
             }
             catch {
-                Copy-Item -LiteralPath $OfficialDll -Destination $directDll
+                # $activeDll didn't look like a genuine PEAK library, so seed
+                # the backup from our own known-good copy instead of trusting
+                # it - but still clear it out of the way of the fresh file
+                # written below.
+                Copy-Item -LiteralPath $OfficialDll -Destination $originalDll -Force
+                Set-AsideLockedFile $activeDll
             }
         }
         else {
-            Copy-Item -LiteralPath $OfficialDll -Destination $directDll
+            Copy-Item -LiteralPath $OfficialDll -Destination $originalDll -Force
         }
     }
     else {
-        Assert-PeakLibrary $directDll
+        Assert-PeakLibrary $originalDll
+        Set-AsideLockedFile $activeDll
     }
 
     Copy-Item -LiteralPath $BridgeProxy -Destination $activeDll -Force
@@ -97,3 +129,9 @@ Install-ClientProxy $TaskControllerDirectory 'AOG-TaskController.exe' $officialD
 Write-Host ''
 Write-Host 'Installation complete.' -ForegroundColor Green
 Write-Host "Start $(Join-Path $brokerDirectoryPath 'AogCanBridge.exe') before starting VT and Task Controller."
+Write-Host 'If VT or Task Controller was already running, restart it to load the patched library.'
+
+}
+finally {
+    try { Stop-Transcript | Out-Null } catch { }
+}

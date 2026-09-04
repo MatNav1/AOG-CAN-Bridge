@@ -19,6 +19,23 @@
 - `Install-Bridge.ps1` and `Restore-DirectPcan.ps1` now default to the
   standard VT/TC install paths and skip (rather than abort on) a missing
   target, so both can be run with no arguments.
+- Patching now swaps `PCANBasic.dll` by renaming rather than overwriting in
+  place (the preserved original is `zPCANBasic.dll`, replacing
+  `PCANBasicDirect.dll`), so VT/Task Controller no longer need to be closed
+  before patching or restoring — verified against a DLL held open by a
+  separate process. They still need restarting afterward to load the change.
+- Fixed a false "patched" reading: status was previously inferred from
+  whether `zPCANBasic.dll` existed, which goes stale if VT/Task Controller is
+  reinstalled or updated (its installer restores its own original
+  `PCANBasic.dll` but has no idea our backup file is sitting there). The
+  bridge proxy DLL now carries an identifiable version marker, and status is
+  read from the active `PCANBasic.dll`'s actual identity instead — verified
+  by reproducing the stale-backup scenario directly.
+- `Install-Bridge.ps1` and `Restore-DirectPcan.ps1` now write a full
+  transcript log (`Install-Bridge.log` / `Restore-DirectPcan.log`, next to
+  the script) on every run, since the installer runs them hidden.
+- The installer can optionally add a Startup-folder shortcut to launch the
+  broker automatically (minimized) on Windows sign-in.
 
 ## 0.1.1-alpha - 2026-09-03
 
