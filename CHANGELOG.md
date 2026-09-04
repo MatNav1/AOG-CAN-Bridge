@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed autostart leaving no way back: `--minimized` used to hide the window
+  and remove it from the taskbar with nothing left to click. Added a system
+  tray icon (double-click or right-click → Show restores it, → Exit closes
+  the app), and relaunching the exe while it's minimized now brings the
+  running instance forward instead of just reporting "already running" and
+  doing nothing — verified both paths directly (window handle goes from 0 to
+  a real handle after the relaunch signal).
 - Translated the GUI to English with a language picker; UI text now loads
   from external `Languages\*.lang` files (English and Polish shipped) so a
   translation can be added without a rebuild.

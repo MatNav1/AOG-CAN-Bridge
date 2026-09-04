@@ -25,6 +25,9 @@ namespace AogCanBridge
         private readonly Label busloadLabel = new Label();
         private readonly ProgressBar busloadBar = new ProgressBar();
         private readonly Label hintLabel = new Label();
+        private readonly NotifyIcon trayIcon = new NotifyIcon();
+        private readonly ToolStripMenuItem trayShowMenuItem = new ToolStripMenuItem();
+        private readonly ToolStripMenuItem trayExitMenuItem = new ToolStripMenuItem();
         private readonly Dictionary<string, ClientState> clients =
             new Dictionary<string, ClientState>();
         private readonly object sync = new object();
@@ -49,8 +52,10 @@ namespace AogCanBridge
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); }
+            Icon appIcon = null;
+            try { appIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); }
             catch (ArgumentException) { }
+            Icon = appIcon;
 
             languageCaptionLabel.Location = new Point(20, 22);
             languageCaptionLabel.AutoSize = true;
@@ -107,7 +112,26 @@ namespace AogCanBridge
             hintLabel.Size = new Size(375, 22);
             Controls.Add(hintLabel);
 
-            FormClosing += (_, __) => StopBridge();
+            trayShowMenuItem.Click += (_, __) => RestoreFromTray();
+            trayExitMenuItem.Click += (_, __) => Close();
+            ContextMenuStrip trayMenu = new ContextMenuStrip();
+            trayMenu.Items.Add(trayShowMenuItem);
+            trayMenu.Items.Add(trayExitMenuItem);
+            trayIcon.Icon = appIcon ?? SystemIcons.Application;
+            trayIcon.Text = "AOG CAN Bridge";
+            trayIcon.ContextMenuStrip = trayMenu;
+            trayIcon.DoubleClick += (_, __) => RestoreFromTray();
+            trayIcon.Visible = true;
+
+            Resize += (_, __) =>
+            {
+                if (WindowState == FormWindowState.Minimized) MinimizeToTray();
+            };
+            FormClosing += (_, __) =>
+            {
+                StopBridge();
+                trayIcon.Visible = false;
+            };
 
             InitializeLanguages();
 
@@ -122,12 +146,25 @@ namespace AogCanBridge
                     }
                     else if (minimized)
                     {
-                        WindowState = FormWindowState.Minimized;
-                        ShowInTaskbar = false;
-                        Hide();
+                        MinimizeToTray();
                     }
                 };
             }
+        }
+
+        private void MinimizeToTray()
+        {
+            WindowState = FormWindowState.Minimized;
+            ShowInTaskbar = false;
+            Hide();
+        }
+
+        internal void RestoreFromTray()
+        {
+            Show();
+            WindowState = FormWindowState.Normal;
+            ShowInTaskbar = true;
+            Activate();
         }
 
         private void InitializeLanguages()
@@ -158,6 +195,8 @@ namespace AogCanBridge
                 ? Localization.Get("StatusRunning", channelBox.SelectedItem)
                 : Localization.Get("StatusStopped");
             hintLabel.Text = Localization.Get("Hint");
+            trayShowMenuItem.Text = Localization.Get("TrayShow");
+            trayExitMenuItem.Text = Localization.Get("TrayExit");
             UpdateStatistics();
         }
 
