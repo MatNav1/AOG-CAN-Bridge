@@ -45,5 +45,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AogCanBridge-Setup
-          path: installer/Output/*.exe
+          path: dist/*.exe
           if-no-files-found: error
