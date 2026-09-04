@@ -24,6 +24,11 @@ their standard locations (`C:\Program Files\AgISOVirtualTerminal\bin` and
 updating either app to re-patch it. Uninstalling restores each app's original
 `PCANBasic.dll`.
 
+The patch step is not silent: a console window briefly runs it, and a
+message box then shows the result (and exit code) for each app — including
+"skipped" if VT or TC wasn't found at its standard location. Note what it
+says if patching didn't take effect.
+
 If VT or Task Controller is installed somewhere else, or you want more
 control over the patch step, use the manual PowerShell installation below
 instead.

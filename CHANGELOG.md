@@ -31,9 +31,23 @@
   bridge proxy DLL now carries an identifiable version marker, and status is
   read from the active `PCANBasic.dll`'s actual identity instead — verified
   by reproducing the stale-backup scenario directly.
+- Fixed the actual cause of patching silently failing when run by the
+  installer: `Install-Bridge.ps1` had `[CmdletBinding()]`, and with it
+  `$PSScriptRoot` is not yet set while the `param()` block's own
+  default-value expressions are evaluated, so `Join-Path $PSScriptRoot ...`
+  threw immediately - before `Start-Transcript` had even run, which is why
+  no log appeared either. This only ever showed up when the script was
+  invoked with none of its arguments given explicitly (exactly how the
+  installer calls it); every manual test before this always passed
+  arguments, which masked it. Reproduced directly, then confirmed fixed by
+  removing `[CmdletBinding()]` (unused here) and re-running both the
+  failing and the happy-path case.
 - `Install-Bridge.ps1` and `Restore-DirectPcan.ps1` now write a full
   transcript log (`Install-Bridge.log` / `Restore-DirectPcan.log`, next to
-  the script) on every run, since the installer runs them hidden.
+  the script) on every run.
+- The installer's patch/restore step is no longer silent: it runs visibly
+  and then shows the resulting log (and exit code) in a message box, so a
+  failed or skipped patch is impossible to miss.
 - The installer can optionally add a Startup-folder shortcut to launch the
   broker automatically (minimized) on Windows sign-in.
 

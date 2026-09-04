@@ -1,4 +1,8 @@
-[CmdletBinding()]
+# No [CmdletBinding()] here: with it, $PSScriptRoot is not yet set while the
+# param block's own default-value expressions below are evaluated, so
+# Join-Path throws immediately - before Start-Transcript even runs, leaving
+# no log at all. Verified directly (powershell.exe -File, no arguments,
+# which is exactly how the installer invokes this script).
 param(
     [string]$OfficialPcanBasicDll = (Join-Path $PSScriptRoot 'Vendor\PCANBasic.dll'),
     [string]$VirtualTerminalDirectory = 'C:\Program Files\AgISOVirtualTerminal\bin',
