@@ -15,8 +15,15 @@ namespace AogCanBridge
             {
                 if (!isFirstInstance)
                 {
-                    MessageBox.Show("AOG CAN Bridge jest już uruchomiony.", "AOG CAN Bridge",
-                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Relaunching (e.g. double-clicking the shortcut again while
+                    // it's minimized to the tray) should just bring the running
+                    // instance forward, the way a normal single-instance app
+                    // does - not report "already running" and do nothing.
+                    using (EventWaitHandle showEvent = new EventWaitHandle(false,
+                        EventResetMode.AutoReset, "Local\\AogCanBridge.Show"))
+                    {
+                        showEvent.Set();
+                    }
                     return;
                 }
                 Application.EnableVisualStyles();
@@ -27,6 +34,8 @@ namespace AogCanBridge
                     string.Equals(argument, "--minimized", StringComparison.OrdinalIgnoreCase));
                 using (EventWaitHandle stopEvent = new EventWaitHandle(false,
                     EventResetMode.AutoReset, "Local\\AogCanBridge.Stop"))
+                using (EventWaitHandle showEvent = new EventWaitHandle(false,
+                    EventResetMode.AutoReset, "Local\\AogCanBridge.Show"))
                 {
                     BridgeForm form = new BridgeForm(autoStart, minimized);
                     RegisteredWaitHandle stopRegistration = ThreadPool.RegisterWaitForSingleObject(
@@ -39,8 +48,19 @@ namespace AogCanBridge
                         null,
                         Timeout.Infinite,
                         true);
+                    RegisteredWaitHandle showRegistration = ThreadPool.RegisterWaitForSingleObject(
+                        showEvent,
+                        (_, __) =>
+                        {
+                            if (form.IsHandleCreated && !form.IsDisposed)
+                                form.BeginInvoke(new Action(form.RestoreFromTray));
+                        },
+                        null,
+                        Timeout.Infinite,
+                        true);
                     Application.Run(form);
                     stopRegistration.Unregister(null);
+                    showRegistration.Unregister(null);
                 }
             }
         }
