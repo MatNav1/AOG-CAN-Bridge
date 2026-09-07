@@ -15,7 +15,7 @@ copyrighted by PEAK-System and is subject to PEAK-System's terms. See
 ## Recommended: Windows installer
 
 Download `AogCanBridge-Setup-<version>.exe` from the
-[latest release](https://github.com/gunicsba/AOG-CAN-Bridge/releases/latest)
+[latest release](https://github.com/MatNav1/AOG-CAN-Bridge/releases/latest)
 and run it as Administrator. It installs the broker to
 `C:\Program Files\AOG CAN Bridge`, and — if the "Patch AgOpenGPS Virtual
 Terminal / Task Controller now" task is left checked — patches both apps in

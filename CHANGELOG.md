@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0-alpha - 2026-09-07
+
 - Fixed autostart leaving no way back: `--minimized` used to hide the window
   and remove it from the taskbar with nothing left to click. Added a system
   tray icon (double-click or right-click → Show restores it, → Exit closes
